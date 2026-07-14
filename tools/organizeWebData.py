@@ -1,3 +1,5 @@
+#This scirpt organizes the data parsed in webscraper.py and organizes it into a csv for easier lookup
+
 import csv
 from pathlib import Path
 

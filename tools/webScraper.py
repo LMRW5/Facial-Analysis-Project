@@ -1,3 +1,6 @@
+#This script goes onto the web and scans all of the information displayed on each page. 
+# It then stores ti in a file for each phenotype
+
 from __future__ import annotations
 
 import sys
