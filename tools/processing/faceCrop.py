@@ -15,7 +15,7 @@ if haar_cascade.empty():
     sys.exit()
 
 # Read image (keep color version)
-file_name = "tools/processing/smiling.jpg"
+file_name = "tools/processing/blankface.jpg"
 img = cv2.imread(file_name)
 
 if img is None:
