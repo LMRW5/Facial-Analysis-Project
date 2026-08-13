@@ -2,14 +2,14 @@ import faiss
 import json
 import numpy as np
 
-from faceEmbedder import FaceEmbedder
+from tools.objects.faceEmbedder import FaceEmbedder
 
 
-INDEX_PATH = "database/phenotypes.faiss"
+INDEX_PATH = "database/faces.faiss"
 METADATA_PATH = "database/metadata.json"
 
 
-class PhenotypeSearcher:
+class FaceSearcher:
 
     def __init__(self):
 
@@ -17,17 +17,27 @@ class PhenotypeSearcher:
             INDEX_PATH
         )
 
-        with open(METADATA_PATH, "r") as f:
+        with open(
+            METADATA_PATH,
+            "r"
+        ) as f:
+
             self.metadata = json.load(f)
+
 
         self.embedder = FaceEmbedder()
 
 
-    def search(self, image_path, k=100):
+    def search(
+        self,
+        image_path,
+        top_k=10
+    ):
 
         embedding = self.embedder.get_embedding(
             image_path
         )
+
 
         if embedding is None:
             return []
@@ -39,14 +49,16 @@ class PhenotypeSearcher:
         )
 
 
+        # Normalize for cosine similarity
         faiss.normalize_L2(
             query
         )
 
 
+        # Search FAISS
         distances, ids = self.index.search(
             query,
-            k
+            top_k
         )
 
 
@@ -58,6 +70,10 @@ class PhenotypeSearcher:
             ids[0]
         ):
 
+            if idx < 0:
+                continue
+
+
             results.append(
                 {
                     "score": float(score),
@@ -66,4 +82,4 @@ class PhenotypeSearcher:
             )
 
 
-        return results[:10:]
+        return results

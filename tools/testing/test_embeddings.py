@@ -1,18 +1,20 @@
-from faceEmbedder import FaceEmbedder
-from tools.setup.buildDatabase import embed_image
-embedder = FaceEmbedder()
+import json
+import faiss
 
-embedding = embed_image("dataset/aetid/aetidf_cropped.jpg", embedder)
+INDEX_PATH = "database/faces.faiss"
+METADATA_PATH = "database/metadata.json"
 
-if embedding is not None:
-    print("Embedding shape:", embedding.shape)
-    print("First 10 values:")
-    print(embedding[:10])
+index = faiss.read_index(INDEX_PATH)
 
-# import cv2
+with open(METADATA_PATH, "r") as f:
+    metadata = json.load(f)
 
-# img = cv2.imread(
-#     "dataset/aetid/aetidf_cropped.jpg"
-# )
+print("Loaded FAISS index with", index.ntotal, "vectors")
+print("Embedding dimension:", index.d)
 
-# print(img.shape)
+for i in range(index.ntotal):
+    embedding = index.reconstruct(i)
+    print(
+        f"Embedding #{i}: shape={embedding.shape}, "
+        f"metadata={metadata[i] if i < len(metadata) else 'missing'}"
+    )

@@ -3,165 +3,146 @@ import json
 import faiss
 import numpy as np
 
-from faceEmbedder import FaceEmbedder
+from tools.objects.faceEmbedder import FaceEmbedder
 
+# -------------------------
+# SETTINGS
+# -------------------------
 
-DATASET_DIR = "dataset"
+DATASET_DIR = "Open Famous People Faces"
 DATABASE_DIR = "database"
 
-def main():
-    os.makedirs(
-        DATABASE_DIR,
-        exist_ok=True
-    )
+MIN_IMAGES_PER_PERSON = 2
 
+
+# -------------------------
+# BUILD DATABASE
+# -------------------------
+
+def main():
+    os.makedirs(DATABASE_DIR, exist_ok=True)
 
     embedder = FaceEmbedder()
 
-
     vectors = []
     metadata = []
-
-
     id_counter = 0
 
+    print("Starting database generation...\n")
 
-    for phenotype_folder in os.listdir(DATASET_DIR):
+    # Traverse each person's folder in the dataset
+    for person_name in os.listdir(DATASET_DIR):
+        person_folder = os.path.join(DATASET_DIR, person_name)
 
-        folder_path = os.path.join(
-            DATASET_DIR,
-            phenotype_folder
-        )
-
-
-        if not os.path.isdir(folder_path):
+        if not os.path.isdir(person_folder):
             continue
 
+        # Get valid image files
+        image_names = [
+            name
+            for name in os.listdir(person_folder)
+            if name.lower().endswith((".jpg", ".jpeg", ".png"))
+        ]
 
-        for image_name in os.listdir(folder_path):
-            if not image_name.lower().endswith(
-                (".jpg", ".png", ".jpeg")
-            ) or not "cropped" in image_name or "low_res" in image_name:
-                continue
-            
-            parts = image_name.split("_")
-            gender = None
+        if len(image_names) < MIN_IMAGES_PER_PERSON:
+            continue
 
-            if len(parts) > 1:
-                gender = parts[0][-1]
+        print(f"Processing Person: {person_name} ({len(image_names)} images)")
 
+        person_embeddings = []
 
-            image_path = os.path.join(
-                folder_path,
-                image_name
-            )
+        # Extract embeddings for all images of this person
+        for image_name in image_names:
+            image_path = os.path.join(person_folder, image_name)
 
-            print(
-                "Processing:",
-                image_path
-            )
-
-
-            embedding = embedder.get_embedding(
-                image_path
-            )
-
+            embedding = embedder.get_embedding(image_path)
 
             if embedding is None:
+                print(f"  └─ Failed to extract embedding for {image_name}")
                 continue
 
+            person_embeddings.append(embedding)
 
-            vectors.append(
-                embedding
-            )
+        # Skip if we couldn't get enough valid embeddings
+        if len(person_embeddings) < MIN_IMAGES_PER_PERSON:
+            print(f"  └─ Skipped: Not enough valid face embeddings extracted.\n")
+            continue
 
+        # ---------------------------------------------------------
+        # AVERAGE VECTOR COMPUTATION (Look-Alike Composite Vector)
+        # ---------------------------------------------------------
+        # 1. Compute the mean feature vector across all photos of this person
+        mean_vector = np.mean(person_embeddings, axis=0)
 
-            metadata.append(
-                {
-                    "id": id_counter,
-                    "phenotype": phenotype_folder,
-                    "file": image_name,
-                    "gender": gender
-                }
-            )
+        # 2. Normalize the composite mean vector to unit length (L2 norm = 1)
+        norm = np.linalg.norm(mean_vector)
+        if norm > 0:
+            mean_vector = mean_vector / norm
 
+        vectors.append(mean_vector)
 
-            id_counter += 1
+        # 3. Store single composite metadata entry per celebrity
+        metadata.append({
+            "id": id_counter,
+            "person": person_name,
+            "sample_count": len(person_embeddings)
+        })
 
+        id_counter += 1
+        print(f"  └─ Successfully created composite vector (ID: {id_counter - 1})\n")
 
+    # -------------------------
+    # CHECK DATA
+    # -------------------------
 
-    print(
-        "Total embeddings:",
-        len(vectors)
-    )
+    print("--------------------------------------------------")
+    print(f"Total Unique Celebrities Processed: {len(vectors)}")
 
     if len(vectors) == 0:
-        print("No images found!")
+        print("No valid face vectors were generated. Exiting.")
         return
-    # Convert to numpy matrix
 
-    vectors = np.array(
-        vectors,
-        dtype="float32"
-    )
+    # Convert vectors list to a 2D float32 numpy array
+    vectors_array = np.array(vectors, dtype="float32")
 
+    print(f"FAISS Matrix Shape: {vectors_array.shape}")
 
-    print(
-        "Vector shape:",
-        vectors.shape
-    )
+    # Double-check L2 normalization for Inner Product (Cosine Similarity) index
+    faiss.normalize_L2(vectors_array)
 
+    # -------------------------
+    # CREATE FAISS INDEX
+    # -------------------------
 
-    # Normalize for cosine similarity
+    dimension = vectors_array.shape[1]  # 512 for ArcFace
 
-    faiss.normalize_L2(
-        vectors
-    )
+    # IndexFlatIP calculates exact Cosine Similarity on L2-normalized vectors
+    index = faiss.IndexFlatIP(dimension)
+    index.add(vectors_array)
 
+    print(f"FAISS Total Indexed Vectors: {index.ntotal}")
 
-    # Create FAISS index
+    # -------------------------
+    # SAVE FAISS INDEX & METADATA
+    # -------------------------
 
-    dimension = 512
+    index_path = os.path.join(DATABASE_DIR, "faces.faiss")
+    metadata_path = os.path.join(DATABASE_DIR, "metadata.json")
 
-    index = faiss.IndexFlatIP(
-        dimension
-    )
+    faiss.write_index(index, index_path)
 
+    with open(metadata_path, "w") as f:
+        json.dump(metadata, f, indent=4)
 
-    index.add(
-        vectors
-    )
-
-    print(
-        "FAISS vectors:",
-        index.ntotal
-    )
-
-
-    # Save FAISS database
-
-    faiss.write_index(
-        index,
-        f"{DATABASE_DIR}/phenotypes.faiss"
-    )
+    print("--------------------------------------------------")
+    print("Database build complete!")
+    print(f"Saved FAISS Index : {index_path}")
+    print(f"Saved Metadata    : {metadata_path}")
 
 
-    # Save metadata
+# -------------------------
+# RUN
+# -------------------------
 
-    with open(
-        f"{DATABASE_DIR}/metadata.json",
-        "w"
-    ) as f:
-
-        json.dump(
-            metadata,
-            f,
-            indent=4
-        )
-
-
-    print(
-        "Database created!"
-    )
 if __name__ == "__main__":
     main()
