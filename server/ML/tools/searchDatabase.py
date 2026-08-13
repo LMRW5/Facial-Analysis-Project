@@ -1,9 +1,9 @@
-from tools.objects.faceSearcher import FaceSearcher
+from server.ML.tools.objects.faceSearcher import FaceSearcher
 
 from PIL import Image
 import matplotlib.pyplot as plt
 from pathlib import Path
-from processing.faceCrop import crop_face
+from server.ML.tools.processing.faceCrop import crop_face
 
 # -------------------------
 # SETTINGS

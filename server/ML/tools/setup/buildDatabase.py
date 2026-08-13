@@ -3,7 +3,7 @@ import json
 import faiss
 import numpy as np
 
-from tools.objects.faceEmbedder import FaceEmbedder
+from server.ML.tools.objects.faceEmbedder import FaceEmbedder
 
 # -------------------------
 # SETTINGS

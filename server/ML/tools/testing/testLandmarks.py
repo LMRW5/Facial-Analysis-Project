@@ -4,8 +4,8 @@ import numpy as np
 
 from pathlib import Path
 
-from tools.objects.faceSearcher import FaceSearcher
-from tools.objects.faceGeometry import FaceGeometry
+from server.ML.tools.objects.faceSearcher import FaceSearcher
+from server.ML.tools.objects.faceGeometry import FaceGeometry
 
 
 # ============================================================

@@ -6,7 +6,7 @@ import numpy as np
 
 from pathlib import Path
 
-from tools.objects.faceEmbedder import FaceEmbedder
+from server.ML.tools.objects.faceEmbedder import FaceEmbedder
 
 
 # ============================================================

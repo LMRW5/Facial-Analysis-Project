@@ -1,4 +1,4 @@
 Open Famous People Faces/
-tools/processing/pictures/
-tools/processing/stored-faces
+server/ML/tools/processing/pictures
+server/ML/tools/processing/stored-faces
 models

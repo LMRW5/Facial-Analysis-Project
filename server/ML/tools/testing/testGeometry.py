@@ -1,7 +1,7 @@
 import cv2
 import mediapipe as mp
 
-from tools.objects.faceGeometry import FaceGeometry
+from server.ML.tools.objects.faceGeometry import FaceGeometry
 
 
 MODEL_PATH = "models/face_landmarker.task"
